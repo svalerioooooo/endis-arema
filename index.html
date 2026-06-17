@@ -630,8 +630,7 @@ function renderPriority(){
   prioList.innerHTML = "";
 
   const cand = [...openInScope()]
-    .sort((a, b) => a.load - b.load)
-    .slice(0, 3);
+    .sort((a, b) => a.load - b.load);
 
   if(cand.length === 0){
     prioList.innerHTML = '<li class="ro-empty">Aucun agent ouvert dans ce périmètre.</li>';
