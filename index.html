@@ -710,19 +710,20 @@ function renderAgents(){
           badgeHTML(a.segment)+
         '</div>'+
 
-        // ✅ CHARGE
+        // ✅ AFFAIRES
         '<div class="stepper">'+
           '<button class="minus">−</button>'+
-          '<span class="val">'+a.load+'</span>'+
+          '<span class="val">A '+a.load+'</span>'+
           '<button class="plus">+</button>'+
         '</div>'+
-
-        // ✅ POIDS 🔥 (NOUVEAU)
+        
+        // ✅ POIDS
         '<div class="stepper">'+
           '<button class="wminus">−</button>'+
-          '<span class="val">'+(a.weight || 1)+'</span>'+
+          '<span class="val">P '+(a.weight || 1)+'</span>'+
           '<button class="wplus">+</button>'+
         '</div>'+
+
 
         '<button class="del">×</button>';
 
