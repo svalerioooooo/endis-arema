@@ -872,7 +872,7 @@ function assign(){
   revealTag.style.display="none";
 
   const reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
-  if(reduce||usable.length<2) return settle(chosen);
+  if(reduce) return settle(chosen);
 
   let n=0;
   const steps=10;
