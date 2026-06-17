@@ -429,7 +429,18 @@ const SEED=[
 ["Patricia Henry","C4",3],["Hugo Renaud","C5",4],["Valérie Marchand","C2",2],["Olivier Fontaine","C4",5]
 ];
 
-const state={segments:[],agents:[],scope:"all",view:"all",addSeg:"",history:[],pin:"0000",logo:null,unlocked:false};
+const state={
+  segments:[],
+  agents:[],
+  scope:"all",
+  view:"all",
+  addSeg:"",
+  history:[],
+  pin:"0000",
+  logo:null,
+  unlocked:false,
+  turn:0   // ✅ AJOUT ICI
+};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const $=(s)=>document.querySelector(s);
 const cap=(s)=>s.charAt(0).toUpperCase()+s.slice(1);
@@ -650,7 +661,11 @@ function renderPriority(){
 
   const cand = state.agents
   .filter(a => a.segment === state.scope)
-  .sort((a, b) => a.load - b.load);
+  .sort((a, b) => {
+  const aOk = state.turn % (a.weight || 1) === 0;
+  const bOk = state.turn % (b.weight || 1) === 0;
+  return (bOk - aOk) || (a.load - b.load);
+});
 
 
   if(cand.length === 0){
@@ -842,8 +857,7 @@ function assign(){
   // ✅ FILTRE PAR POIDS (rotation)
   const allowed = cand.filter(a => {
     const w = a.weight || 1;
-    const t = a.turn || 0;
-    return t % w === 0;
+    return state.turn % w === 0;
   });
 
   const usable = allowed.length ? allowed : cand;
@@ -877,12 +891,7 @@ function assign(){
     state.history.push(w.id);
 
     // ✅ IMPORTANT : rotation
-    state.agents.forEach(a => a.turn = (a.turn || 0) + 1);
-
-    // ✅ reset sécurité
-    if(state.agents[0].turn > 1000){
-      state.agents.forEach(a => a.turn = 0);
-    }
+    state.turn++;
 
     undoBtn.disabled=false;
     setReveal("result",w.name,w.segment,w.load);
