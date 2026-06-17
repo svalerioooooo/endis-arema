@@ -434,7 +434,17 @@ const cap=(s)=>s.charAt(0).toUpperCase()+s.slice(1);
 
 function seedData(){
   state.segments=DEFAULT_SEGMENTS.map(s=>({id:uid(),code:s.code,color:s.color}));
-  state.agents=SEED.map(a=>({id:uid(),name:a[0],segment:a[1],load:a[2],open:true,schedules:[]}));
+  
+state.agents=SEED.map(a=>({
+  id:uid(),
+  name:a[0],
+  segment:a[1],
+  load:a[2],
+  open:true,
+  schedules:[],
+  weight:1,   // ✅ nouveau
+  turn:0      // ✅ nouveau
+}));
   state.history=[];state.addSeg=state.segments[0].code;
 }
 
@@ -662,27 +672,121 @@ function renderPriority(){
 
 function renderAgents(){
   agentList.innerHTML="";
+
   const clock='<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
   const calIcon='<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-  state.agents.filter(a=>state.view==="all"||a.segment===state.view).forEach(a=>{
-    const es=effState(a),li=document.createElement("li");if(!es.open)li.className="closed";
-    const dis=es.reason==="closure";
-    li.innerHTML='<div class="ag-ctrl"><button class="pill '+(es.open?"open":"shut")+'"'+(dis?' disabled':'')+'><span class="d"></span>'+(es.open?"Ouvert":"Fermé")+(dis?' <span class="pg">⏱</span>':'')+'</button><button class="prog" title="Programmer">'+calIcon+'</button></div>'+
-    '<div class="ag-main"><span class="ag-name"></span>'+badgeHTML(a.segment)+'</div>'+
-    '<div class="stepper"><button class="minus">−</button><span class="val">'+a.load+'</span><button class="plus">+</button></div>'+
-    '<button class="del" title="Retirer">×</button>';
-    li.querySelector(".ag-name").textContent=a.name;
-    if(es.reason==="closure"){const sub=document.createElement("div");sub.className="ag-sched now";sub.innerHTML=clock+'<span>Indisponible jusqu\'au '+(es.closure.end?fmt(es.closure.end):"nouvel ordre")+'</span>';li.appendChild(sub);}
-    else if(es.reason==="open"&&es.upcoming){const sub=document.createElement("div");sub.className="ag-sched up";sub.innerHTML=clock+'<span>Fermeture prévue le '+fmt(es.upcoming.start)+(es.upcoming.end?" → "+fmt(es.upcoming.end):"")+'</span>';li.appendChild(sub);}
-    const pill=li.querySelector(".pill");if(!dis)pill.addEventListener("click",()=>{a.open=!a.open;renderAll();save();});
-    li.querySelector(".prog").addEventListener("click",()=>goPlanning(a.id));
-    li.querySelector(".minus").addEventListener("click",()=>{if(a.load>0){a.load--;renderAll();save();}});
-    li.querySelector(".plus").addEventListener("click",()=>{a.load++;renderAll();save();});
-    li.querySelector(".del").addEventListener("click",()=>{if(confirm("Retirer "+a.name+" ?")){state.agents=state.agents.filter(x=>x.id!==a.id);state.history=state.history.filter(h=>h!==a.id);renderAll();save();}});
-    agentList.appendChild(li);
-  });
-  $("#activeCount").textContent=countOpen("all")+" ouverts / "+state.agents.length;
+
+  state.agents
+    .filter(a => state.view==="all" || a.segment===state.view)
+    .forEach(a => {
+
+      const es = effState(a);
+      const li = document.createElement("li");
+
+      if(!es.open) li.className="closed";
+
+      const dis = es.reason==="closure";
+
+      li.innerHTML =
+        '<div class="ag-ctrl">'+
+          '<button class="pill '+(es.open?"open":"shut")+'"'+(dis?' disabled':'')+'>'+
+            '<span class="d"></span>'+(es.open?"Ouvert":"Fermé")+
+          '</button>'+
+          '<button class="prog">'+calIcon+'</button>'+
+        '</div>'+
+
+        '<div class="ag-main">'+
+          '<span class="ag-name"></span>'+
+          badgeHTML(a.segment)+
+        '</div>'+
+
+        // ✅ CHARGE
+        '<div class="stepper">'+
+          '<button class="minus">−</button>'+
+          '<span class="val">'+a.load+'</span>'+
+          '<button class="plus">+</button>'+
+        '</div>'+
+
+        // ✅ POIDS 🔥 (NOUVEAU)
+        '<div class="stepper">'+
+          '<button class="wminus">−</button>'+
+          '<span class="val">'+(a.weight || 1)+'</span>'+
+          '<button class="wplus">+</button>'+
+        '</div>'+
+
+        '<button class="del">×</button>';
+
+      li.querySelector(".ag-name").textContent = a.name;
+
+      if(es.reason==="closure"){
+        const sub=document.createElement("div");
+        sub.className="ag-sched now";
+        sub.innerHTML = clock + '<span>Indisponible</span>';
+        li.appendChild(sub);
+      }
+
+      // ✅ ACTIONS
+      const pill = li.querySelector(".pill");
+
+      if(!dis){
+        pill.addEventListener("click",()=>{
+          a.open=!a.open;
+          renderAll();
+          save();
+        });
+      }
+
+      li.querySelector(".prog").addEventListener("click",()=>goPlanning(a.id));
+
+      // ✅ charge -
+      li.querySelector(".minus").addEventListener("click",()=>{
+        if(a.load>0){
+          a.load--;
+          renderAll();
+          save();
+        }
+      });
+
+      // ✅ charge +
+      li.querySelector(".plus").addEventListener("click",()=>{
+        a.load++;
+        renderAll();
+        save();
+      });
+
+      // ✅ poids -
+      li.querySelector(".wminus").addEventListener("click",()=>{
+        if((a.weight || 1) > 1){
+          a.weight--;
+          renderAll();
+          save();
+        }
+      });
+
+      // ✅ poids +
+      li.querySelector(".wplus").addEventListener("click",()=>{
+        if((a.weight || 1) < 4){
+          a.weight++;
+          renderAll();
+          save();
+        }
+      });
+
+      // ✅ delete
+      li.querySelector(".del").addEventListener("click",()=>{
+        if(confirm("Retirer "+a.name+" ?")){
+          state.agents = state.agents.filter(x => x.id !== a.id);
+          renderAll();
+          save();
+        }
+      });
+
+      agentList.appendChild(li);
+    });
+
+  $("#activeCount").textContent = countOpen("all")+" ouverts / "+state.agents.length;
 }
+
 
 function renderSchedules(){
   const sel=$("#schAgent"),cur=sel.value;sel.innerHTML="";
@@ -705,16 +809,76 @@ function setReveal(cls,name,tagSeg,charge){
 
 let running=false;
 function assign(){
-  if(running)return;const cand=openInScope();
-  if(state.agents.length===0){setReveal("idle","Aucun agent. Réinitialisez dans Admin › Réglages.");revealLabel.textContent="Liste vide";return;}
-  if(cand.length===0){const s=state.scope==="all"?"":" en "+state.scope;setReveal("idle","Aucun agent ouvert"+s+". Ouvrez une personne dans Admin.");revealLabel.textContent="Aucun agent ouvert";return;}
-  const min=Math.min(...cand.map(a=>a.load)),winners=cand.filter(a=>a.load===min),chosen=winners[Math.floor(Math.random()*winners.length)];
-  running=true;assignBtn.disabled=true;revealLabel.textContent="Affectation…";revealTag.style.display="none";
+  if(running)return;
+
+  const cand = openInScope();
+
+  if(state.agents.length===0){
+    setReveal("idle","Aucun agent. Réinitialisez dans Admin › Réglages.");
+    revealLabel.textContent="Liste vide";
+    return;
+  }
+
+  if(cand.length===0){
+    const s=state.scope==="all"?"":" en "+state.scope;
+    setReveal("idle","Aucun agent ouvert"+s+". Ouvrez une personne dans Admin.");
+    revealLabel.textContent="Aucun agent ouvert";
+    return;
+  }
+
+  // ✅ FILTRE PAR POIDS (rotation)
+  const allowed = cand.filter(a => {
+    const w = a.weight || 1;
+    const t = a.turn || 0;
+    return t % w === 0;
+  });
+
+  const usable = allowed.length ? allowed : cand;
+
+  // ✅ CHOIX PAR CHARGE
+  const min = Math.min(...usable.map(a => a.load));
+  const winners = usable.filter(a => a.load === min);
+  const chosen = winners[Math.floor(Math.random()*winners.length)];
+
+  running=true;
+  assignBtn.disabled=true;
+  revealLabel.textContent="Affectation…";
+  revealTag.style.display="none";
+
   const reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
-  if(reduce||cand.length<2)return settle(chosen);
-  let n=0;const steps=10;
-  (function flick(){const r=cand[Math.floor(Math.random()*cand.length)];setReveal("running",r.name);n++;if(n<steps)setTimeout(flick,60+n*16);else settle(chosen);})();
-  function settle(w){w.load++;state.history.push(w.id);undoBtn.disabled=false;setReveal("result",w.name,w.segment,w.load);renderAll();running=false;assignBtn.disabled=false;save();}
+  if(reduce||usable.length<2) return settle(chosen);
+
+  let n=0;
+  const steps=10;
+
+  (function flick(){
+    const r=usable[Math.floor(Math.random()*usable.length)];
+    setReveal("running",r.name);
+    n++;
+    if(n<steps) setTimeout(flick,60+n*16);
+    else settle(chosen);
+  })();
+
+  function settle(w){
+    w.load++;
+    state.history.push(w.id);
+
+    // ✅ IMPORTANT : rotation
+    state.agents.forEach(a => a.turn = (a.turn || 0) + 1);
+
+    // ✅ reset sécurité
+    if(state.agents[0].turn > 1000){
+      state.agents.forEach(a => a.turn = 0);
+    }
+
+    undoBtn.disabled=false;
+    setReveal("result",w.name,w.segment,w.load);
+
+    renderAll();
+    running=false;
+    assignBtn.disabled=false;
+    save();
+  }
 }
 
 function undo(){
