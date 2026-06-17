@@ -455,10 +455,20 @@ function ensureSegments(){
 }
 
 function normalize(){
-  state.agents.forEach(a=>{if(!Array.isArray(a.schedules))a.schedules=[];});
+  state.agents.forEach(a => {
+    if(!Array.isArray(a.schedules)) a.schedules = [];
+
+    // ✅ AJOUT ICI
+    if(a.weight === undefined) a.weight = 1;
+    if(a.turn === undefined) a.turn = 0;
+  });
+
   ensureSegments();
-  const codes=new Set(state.segments.map(s=>s.code));
-  if(!codes.has(state.addSeg))state.addSeg=state.segments[0]?state.segments[0].code:"";
+
+  const codes = new Set(state.segments.map(s => s.code));
+  if(!codes.has(state.addSeg)){
+    state.addSeg = state.segments[0] ? state.segments[0].code : "";
+  }
 }
 
 // ── Firebase save / load ──
