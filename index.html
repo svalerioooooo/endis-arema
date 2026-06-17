@@ -583,14 +583,11 @@ function renderScopeChips(){
     }
 
     b.addEventListener("click", () => {
-      state.scope = s.code;
-      state.view = s.code;
+  state.scope = s.code;
 
-      showMode("admin");
-      activateSub("agents");
-
-      renderAll();
-    });
+  renderScopeChips();
+  renderPriority();
+});
 
     host.appendChild(b);
   });
@@ -629,8 +626,10 @@ function removeSegment(s){
 function renderPriority(){
   prioList.innerHTML = "";
 
-  const cand = [...openInScope()]
-    .sort((a, b) => a.load - b.load);
+  const cand = state.agents
+  .filter(a => a.segment === state.scope)
+  .sort((a, b) => a.load - b.load);
+
 
   if(cand.length === 0){
     prioList.innerHTML = '<li class="ro-empty">Aucun agent ouvert dans ce périmètre.</li>';
