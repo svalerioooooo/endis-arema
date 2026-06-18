@@ -379,11 +379,19 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 </section>
 <section class="card">
 <div class="card-title"><span class="dot"></span>Données</div>
+
 <div class="set-row"><div><div class="lab">Exporter</div><div class="sub">Copier les données (JSON)</div></div><button class="btn-mini" id="exportBtn">Exporter</button></div>
+
 <div class="set-row"><div><div class="lab">Importer</div><div class="sub">Coller un JSON — remplace tout</div></div><button class="btn-mini" id="importBtn">Importer</button></div>
+
 <div class="set-row"><div><div class="lab">Réinitialiser</div><div class="sub">Recharge les 20 agents de départ</div></div><button class="btn-mini btn-danger" id="resetBtn">Réinitialiser</button></div>
+
 <div class="set-row"><div><div class="lab">Remettre les charges à zéro</div><div class="sub">Garde tout, affaires à 0</div></div><button class="btn-mini btn-danger" id="zeroBtn">Tout à zéro</button></div>
+
+<div class="set-row"><div><div class="lab">Reset complet</div><div class="sub">Charges + rotation + poids à 1</div></div><button class="btn-mini btn-danger" id="fullResetBtn">RESET TOTAL</button></div>
+
 <div class="legend">Code par défaut : <b>0000</b>. Firebase synchronise toutes les modifications en temps réel entre tous les utilisateurs ouverts.</div>
+
 </section>
 </div>
 </div>
@@ -853,7 +861,9 @@ function assign(){
     revealLabel.textContent="Aucun agent ouvert";
     return;
   }
-  const sorted = cand;
+  const sorted = [...cand];
+
+  state.index = state.index % sorted.length;
   
   let current = sorted[state.index];
   let tries = 0;
@@ -885,8 +895,11 @@ function assign(){
   revealTag.style.display="none";
 
   const reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
-  if(reduce) return settle(chosen);
-
+  if(reduce){
+    settle(chosen);
+    return;
+  }
+  
   let n=0;
   const steps=10;
 
@@ -973,6 +986,27 @@ $("#savePin").addEventListener("click",()=>{const p=$("#newPin").value;if(!/^\d{
 $("#lockBtn").addEventListener("click",()=>{state.unlocked=false;showMode("user");});
 $("#resetBtn").addEventListener("click",()=>{if(confirm("Réinitialiser segments et agents de départ ?")){seedData();renderAll();save();undoBtn.disabled=true;}});
 $("#zeroBtn").addEventListener("click",()=>{if(confirm("Remettre toutes les charges à zéro ?")){state.agents.forEach(a=>a.load=0);state.history=[];renderAll();save();undoBtn.disabled=true;}});
+$("#fullResetBtn").addEventListener("click", () => {
+  if(confirm("Réinitialiser complètement ? (charges + rotation + poids)")){
+
+    state.agents.forEach(a => {
+      a.load = 0;
+      a.weight = 1;
+    });
+
+    state.history = [];
+    state.turn = 0;
+    state.index = 0;
+
+    undoBtn.disabled = true;
+
+    setReveal("idle","Système réinitialisé");
+    revealLabel.textContent = "Prêt";
+
+    renderAll();
+    save();
+  }
+});
 $("#logoPick").addEventListener("click",()=>$("#logoFile").click());
 $("#logoFile").addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{state.logo=rd.result;applyLogo();save();};rd.readAsDataURL(f);e.target.value="";});
 $("#logoReset").addEventListener("click",()=>{state.logo=null;applyLogo();save();});
