@@ -1021,6 +1021,7 @@ $("#fullResetBtn").addEventListener("click", () => {
     state.agents.forEach(a => {
       a.load = 0;
       a.weight = 1;
+      a.counter = 0; // ✅ IMPORTANT
     });
 
     state.history = [];
