@@ -438,7 +438,8 @@ const state={
   pin:"0000",
   logo:null,
   unlocked:false,
-  turn:0   // ✅ AJOUT ICI
+  turn:0,
+  index:0   // ✅ NOUVEAU
 };
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const $=(s)=>document.querySelector(s);
@@ -852,19 +853,31 @@ function assign(){
     revealLabel.textContent="Aucun agent ouvert";
     return;
   }
+  const sorted = cand;
+  
+  let current = sorted[state.index];
+  let tries = 0;
+  
+  // ✅ on cherche le prochain agent autorisé
+  while(tries < sorted.length){
+    const w = current.weight || 1;
+  
+    if(state.turn % w === 0){
+      break; // ✅ OK il peut prendre
+    }
+  
+    // sinon on passe au suivant
+    state.index = (state.index + 1) % sorted.length;
+    current = sorted[state.index];
+    tries++;
+  }
+  
+  if(tries >= sorted.length){
+    return; // ✅ on bloque, on force pas
+  }
 
-  // ✅ FILTRE PAR POIDS (rotation)
-  const allowed = cand.filter(a => {
-    const w = a.weight || 1;
-    return state.turn % w === 0;
-  });
-
-  const usable = allowed.length ? allowed : cand;
-
-  // ✅ CHOIX PAR CHARGE
-  const min = Math.min(...usable.map(a => a.load));
-  const winners = usable.filter(a => a.load === min);
-  const chosen = winners[Math.floor(Math.random()*winners.length)];
+  
+  const chosen = current;
 
   running=true;
   assignBtn.disabled=true;
@@ -878,7 +891,7 @@ function assign(){
   const steps=10;
 
   (function flick(){
-    const r=usable[Math.floor(Math.random()*usable.length)];
+    const r = sorted[Math.floor(Math.random() * sorted.length)];
     setReveal("running",r.name);
     n++;
     if(n<steps) setTimeout(flick,60+n*16);
@@ -890,7 +903,11 @@ function assign(){
     state.history.push(w.id);
 
     // ✅ IMPORTANT : rotation
-    state.turn++;
+    state.index = (state.index + 1) % sorted.length;
+
+    if(state.index === 0){
+      state.turn++;
+    }
 
     undoBtn.disabled=false;
     setReveal("result",w.name,w.segment,w.load);
