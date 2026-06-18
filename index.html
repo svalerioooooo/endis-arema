@@ -472,7 +472,6 @@ const state={
   pin:"0000",
   logo:null,
   unlocked:false,
-  turn:0,
   index:0   // ✅ NOUVEAU
 };
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -489,8 +488,9 @@ state.agents=SEED.map(a=>({
   load:a[2],
   open:true,
   schedules:[],
-  weight:1,   // ✅ nouveau
-  turn:0      // ✅ nouveau
+  weight:1,
+  counter:0
+
 }));
   state.history=[];state.addSeg=state.segments[0].code;
 }
@@ -507,7 +507,8 @@ function normalize(){
 
     // ✅ AJOUT ICI
     if(a.weight === undefined) a.weight = 1;
-    if(a.turn === undefined) a.turn = 0;
+    if(a.counter === undefined) a.counter = 0;
+  
   });
 
   ensureSegments();
@@ -695,12 +696,7 @@ function renderPriority(){
 
   const cand = state.agents
   .filter(a => a.segment === state.scope)
-  .sort((a, b) => {
-  const aOk = state.turn % (a.weight || 1) === 0;
-  const bOk = state.turn % (b.weight || 1) === 0;
-  return (bOk - aOk) || (a.load - b.load);
-});
-
+  .sort((a, b) => a.load - b.load);
 
   if(cand.length === 0){
     prioList.innerHTML = '<li class="ro-empty">Aucun agent ouvert dans ce périmètre.</li>';
@@ -871,96 +867,76 @@ function setReveal(cls,name,tagSeg,charge){
 
 let running=false;
 function assign(){
-  if(running)return;
+  if(running) return;
 
   const cand = openInScope();
 
   if(state.agents.length===0){
-    setReveal("idle","Aucun agent. Réinitialisez dans Admin › Réglages.");
-    revealLabel.textContent="Liste vide";
+    setReveal("idle","Aucun agent.");
     return;
   }
 
   if(cand.length===0){
-    const s=state.scope==="all"?"":" en "+state.scope;
-    setReveal("idle","Aucun agent ouvert"+s+". Ouvrez une personne dans Admin.");
-    revealLabel.textContent="Aucun agent ouvert";
+    setReveal("idle","Aucun agent ouvert.");
     return;
   }
-  const sorted = [...cand];
 
-  state.index = state.index % sorted.length;
-  
-  let current = sorted[state.index];
+  const list = [...cand];
+
+  state.index = state.index % list.length;
+
+  let chosen = null;
   let tries = 0;
-  
-  // ✅ on cherche le prochain agent autorisé
-  while(tries < sorted.length){
-    const w = current.weight || 1;
-  
-    if(state.turn % w === 0){
-      break; // ✅ OK il peut prendre
+
+  // ✅ logique poids correcte
+  while(tries < list.length){
+    const a = list[state.index];
+    const w = a.weight || 1;
+
+    if(a.counter < w){
+      chosen = a;
+      break;
     }
-  
-    // sinon on passe au suivant
-    state.index = (state.index + 1) % sorted.length;
-    current = sorted[state.index];
+
+    a.counter = 0;
+    state.index = (state.index + 1) % list.length;
     tries++;
   }
-  
-  if(tries >= sorted.length){
-    return; // ✅ on bloque, on force pas
-  }
 
-  
-  const chosen = current;
+  if(!chosen) return;
 
-  running=true;
-  assignBtn.disabled=true;
-  revealLabel.textContent="Affectation…";
-  revealTag.style.display="none";
+  running = true;
+  assignBtn.disabled = true;
 
-  const reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
-  if(reduce){
-    settle(chosen);
-    return;
-  }
-  
-  let n=0;
-  const steps=10;
+  function settle(a){
+    a.load++;
+    a.counter++;
 
-  (function flick(){
-    const r = sorted[Math.floor(Math.random() * sorted.length)];
-    setReveal("running",r.name);
-    n++;
-    if(n<steps) setTimeout(flick,60+n*16);
-    else settle(chosen);
-  })();
-
-  function settle(w){
-    w.load++;
-    state.history.push(w.id);
-
-    // ✅ IMPORTANT : rotation
-    state.index = (state.index + 1) % sorted.length;
-
-    if(state.index === 0){
-      state.turn++;
+    if(a.counter >= (a.weight || 1)){
+      a.counter = 0;
+      state.index = (state.index + 1) % list.length;
     }
 
-    undoBtn.disabled=false;
-    setReveal("result",w.name,w.segment,w.load);
+    state.history.push(a.id);
+
+    undoBtn.disabled = false;
+    setReveal("result",a.name,a.segment,a.load);
 
     renderAll();
-
-    // ✅ forcer mise à jour de la liste priorité
-    setTimeout(() => {
-      renderPriority();
-    }, 0);
-    running=false;
-    assignBtn.disabled=false;
+    running = false;
+    assignBtn.disabled = false;
     save();
   }
+
+  // animation
+  let i=0;
+  (function flick(){
+    const r=list[Math.floor(Math.random()*list.length)];
+    setReveal("running",r.name);
+    i++;
+    if(i<8) setTimeout(flick,70);
+    else settle(chosen);
+  })();
 }
 
 function undo(){
@@ -1023,10 +999,10 @@ $("#fullResetBtn2").addEventListener("click",()=>{
     state.agents.forEach(a=>{
       a.load = 0;
       a.weight = 1;
+      a.counter = 0;   // ✅ IMPORTANT
     });
 
     state.history = [];
-    state.turn = 0;
     state.index = 0;
 
     undoBtn.disabled = true;
@@ -1048,7 +1024,6 @@ $("#fullResetBtn").addEventListener("click", () => {
     });
 
     state.history = [];
-    state.turn = 0;
     state.index = 0;
 
     undoBtn.disabled = true;
