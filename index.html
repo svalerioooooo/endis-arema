@@ -303,6 +303,10 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 </div>
 <ul class="agents" id="agentList"></ul>
 <div class="list-foot"><span id="activeCount">— ouverts / 0</span></div>
+<div style="margin-top:10px;display:flex;gap:8px">
+  <button class="btn-mini btn-danger" id="zeroBtn2">Tout à zéro</button>
+  <button class="btn-mini btn-danger" id="fullResetBtn2">RESET TOTAL</button>
+</div>
 <div class="legend">Bouton <b>1</b> : ouvrir / fermer · Bouton <b>2</b> (📅) : programmer une fermeture. <b>−/+</b> : ajuster la charge · <b>×</b> : retirer.</div>
 </section>
 <section class="card">
@@ -926,6 +930,11 @@ function assign(){
     setReveal("result",w.name,w.segment,w.load);
 
     renderAll();
+
+    // ✅ forcer mise à jour de la liste priorité
+    setTimeout(() => {
+      renderPriority();
+    }, 0);
     running=false;
     assignBtn.disabled=false;
     save();
@@ -986,6 +995,28 @@ $("#savePin").addEventListener("click",()=>{const p=$("#newPin").value;if(!/^\d{
 $("#lockBtn").addEventListener("click",()=>{state.unlocked=false;showMode("user");});
 $("#resetBtn").addEventListener("click",()=>{if(confirm("Réinitialiser segments et agents de départ ?")){seedData();renderAll();save();undoBtn.disabled=true;}});
 $("#zeroBtn").addEventListener("click",()=>{if(confirm("Remettre toutes les charges à zéro ?")){state.agents.forEach(a=>a.load=0);state.history=[];renderAll();save();undoBtn.disabled=true;}});
+$("#fullResetBtn2").addEventListener("click",()=>{
+  if(confirm("Reset complet ?")){
+
+    state.agents.forEach(a=>{
+      a.load = 0;
+      a.weight = 1;
+    });
+
+    state.history = [];
+    state.turn = 0;
+    state.index = 0;
+
+    undoBtn.disabled = true;
+
+    setReveal("idle","Reset effectué");
+    revealLabel.textContent = "Prêt";
+
+    renderAll();
+    save();
+  }
+});
+
 $("#fullResetBtn").addEventListener("click", () => {
   if(confirm("Réinitialiser complètement ? (charges + rotation + poids)")){
 
