@@ -472,8 +472,8 @@ const state={
   pin:"0000",
   logo:null,
   unlocked:false,
-  round:1,
-  turnQueue:[]
+  rotationIndex:0,
+  rotationRound:1
 
   
 };
@@ -495,8 +495,8 @@ state.agents=SEED.map(a=>({
 }));
 
 state.history = [];
-state.round = 1;
-state.turnQueue = [];
+state.rotationIndex = 0;
+state.rotationRound = 1;
 
 state.addSeg = state.segments[0].code;
 }
@@ -507,23 +507,6 @@ function ensureSegments(){
   const have=new Set(state.segments.map(s=>s.code));let pi=state.segments.length;
   state.agents.forEach(a=>{if(a.segment&&!have.has(a.segment)){state.segments.push({id:uid(),code:a.segment,color:PALETTE[pi++%PALETTE.length]});have.add(a.segment);}});
 }
-
-
-function buildTurnQueue(){
-
-  const eligible = openInScope().filter(a => {
-
-    const w = a.weight || 1;
-
-    return ((state.round - 1) % w) === 0;
-
-  });
-
-  state.turnQueue = eligible.map(a => a.id);
-
-  state.round++;
-}
-
 
 
 
@@ -543,12 +526,12 @@ function normalize(){
   });
 
   // compteur global des tours
-  if(state.round === undefined){
-  state.round = 1;
+  if(state.rotationIndex === undefined){
+    state.rotationIndex = 0;
   }
   
-  if(!Array.isArray(state.turnQueue)){
-    state.turnQueue = [];
+  if(state.rotationRound === undefined){
+    state.rotationRound = 1;
   }
 
   ensureSegments();
@@ -571,7 +554,7 @@ function hashData(d){return JSON.stringify({a:d.agents,s:d.segments,p:d.pin});}
 async function save(){
   if(!FB_CONFIGURED){
     // fallback localStorage si pas de Firebase
-    try{localStorage.setItem("enedis-acor:v2",JSON.stringify({segments:state.segments,agents:state.agents,pin:state.pin,logo:state.logo,round:state.round,turnQueue:state.turnQueue}));}catch(e){}
+    try{localStorage.setItem("enedis-acor:v2",JSON.stringify({segments:state.segments,agents:state.agents,pin:state.pin,logo:state.logo,rotationIndex:state.rotationIndex,rotationRound:state.rotationRound}));}catch(e){}
     return;
   }
   try{
@@ -579,9 +562,20 @@ async function save(){
     banner.classList.add("show");
     await fetch(FIREBASE_URL+"/acor.json",{
       method:"PUT",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({segments:state.segments,agents:state.agents,pin:state.pin,logo:state.logo,round:state.round,turnQueue:state.turnQueue})
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        segments:state.segments,
+        agents:state.agents,
+        pin:state.pin,
+        logo:state.logo,
+        rotationIndex:state.rotationIndex,
+        rotationRound:state.rotationRound
+      })
     });
+
+setTimeout(()=>banner.classList.remove("show"),800);
     setTimeout(()=>banner.classList.remove("show"),800);
   }catch(e){console.error("Firebase save error:",e);}
 }
@@ -597,8 +591,8 @@ async function load(){
         state.segments=Array.isArray(d.segments)?d.segments:[];
         state.pin=d.pin||"0000";
         state.logo=d.logo||null;
-        state.round = d.round || 1;
-        state.turnQueue = d.turnQueue || [];
+        state.rotationIndex = d.rotationIndex || 0;
+        state.rotationRound = d.rotationRound || 1;
         _lastRemoteHash=hashData(d);
         normalize();
         return true;
@@ -612,7 +606,7 @@ async function load(){
       const d=JSON.parse(raw);
       if(Array.isArray(d.agents)&&d.agents.length){
         state.agents=d.agents;state.segments=Array.isArray(d.segments)?d.segments:[];
-        state.pin=d.pin||"0000";state.logo=d.logo||null;state.round = d.round || 1;state.turnQueue = d.turnQueue || [];normalize();return true;
+        state.pin=d.pin||"0000";state.logo=d.logo||null;state.rotationIndex = d.rotationIndex || 0;state.rotationRound = d.rotationRound || 1;normalize();return true;
       }
     }
   }catch(e){}
@@ -637,6 +631,10 @@ function startSync(){
       state.segments=Array.isArray(d.segments)?d.segments:[];
       if(d.pin)state.pin=d.pin;
       if(d.logo!==undefined)state.logo=d.logo;
+      
+      state.rotationIndex = d.rotationIndex || 0;
+      state.rotationRound = d.rotationRound || 1;
+
       normalize();
       renderAll();
     }catch(e){}
@@ -917,26 +915,39 @@ function assign(){
 
   if(running) return;
 
-  if(state.agents.length === 0){
-    setReveal("idle","Aucun agent.");
-    return;
-  }
+  const agents = openInScope();
 
-  if(!state.turnQueue.length){
-    buildTurnQueue();
-  }
-
-  if(!state.turnQueue.length){
+  if(!agents.length){
     setReveal("idle","Aucun agent ouvert.");
     return;
   }
 
-  const agentId = state.turnQueue.shift();
+  let chosen = null;
+  let safety = 0;
 
-  const chosen =
-    state.agents.find(a => a.id === agentId);
+  while(!chosen && safety < agents.length * 5){
+
+    const idx = state.rotationIndex % agents.length;
+
+    const agent = agents[idx];
+
+    const weight = agent.weight || 1;
+
+    if(((state.rotationRound - 1) % weight) === 0){
+      chosen = agent;
+    }
+
+    state.rotationIndex++;
+
+    if(state.rotationIndex % agents.length === 0){
+      state.rotationRound++;
+    }
+
+    safety++;
+  }
 
   if(!chosen){
+    setReveal("idle","Aucun agent disponible.");
     return;
   }
 
@@ -1046,8 +1057,8 @@ $("#fullResetBtn2").addEventListener("click",()=>{
     });
 
     state.history = [];
-    state.round = 1;
-    state.turnQueue = [];
+    state.rotationIndex = 0;
+    state.rotationRound = 1;
 
     undoBtn.disabled = true;
 
@@ -1068,8 +1079,8 @@ $("#fullResetBtn").addEventListener("click", () => {
     });
 
     state.history = [];
-    state.round = 1;
-    state.turnQueue = [];
+    state.rotationIndex = 0;
+    state.rotationRound = 1;
 
     undoBtn.disabled = true;
 
