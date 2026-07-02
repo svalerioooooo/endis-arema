@@ -472,7 +472,7 @@ const state={
   pin:"0000",
   logo:null,
   unlocked:false,
-  index:0   // ✅ NOUVEAU
+  round:1
 };
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const $=(s)=>document.querySelector(s);
@@ -488,9 +488,7 @@ state.agents=SEED.map(a=>({
   load:a[2],
   open:true,
   schedules:[],
-  weight:1,
-  counter:0
-
+  weight:1
 }));
   state.history=[];state.addSeg=state.segments[0].code;
 }
@@ -502,23 +500,38 @@ function ensureSegments(){
 }
 
 function normalize(){
-  state.agents.forEach(a => {
-    if(!Array.isArray(a.schedules)) a.schedules = [];
 
-    // ✅ AJOUT ICI
-    if(a.weight === undefined) a.weight = 1;
-    if(a.counter === undefined) a.counter = 0;
-  
+  state.agents.forEach(a => {
+
+    if(!Array.isArray(a.schedules)){
+      a.schedules = [];
+    }
+
+    // poids par défaut
+    if(a.weight === undefined){
+      a.weight = 1;
+    }
+
   });
+
+  // compteur global des tours
+  if(state.round === undefined){
+    state.round = 1;
+  }
 
   ensureSegments();
 
-  const codes = new Set(state.segments.map(s => s.code));
+  const codes = new Set(
+    state.segments.map(s => s.code)
+  );
+
   if(!codes.has(state.addSeg)){
-    state.addSeg = state.segments[0] ? state.segments[0].code : "";
+    state.addSeg = state.segments[0]
+      ? state.segments[0].code
+      : "";
   }
 }
-
+  
 // ── Firebase save / load ──
 let _lastRemoteHash="";
 function hashData(d){return JSON.stringify({a:d.agents,s:d.segments,p:d.pin});}
@@ -867,75 +880,73 @@ function setReveal(cls,name,tagSeg,charge){
 
 let running=false;
 function assign(){
+
   if(running) return;
 
-  const cand = openInScope();
+  const eligible = openInScope().filter(a => {
+    const w = a.weight || 1;
+    return ((state.round - 1) % w) === 0;
+  });
 
-  if(state.agents.length===0){
+  if(state.agents.length === 0){
     setReveal("idle","Aucun agent.");
     return;
   }
 
-  if(cand.length===0){
-    setReveal("idle","Aucun agent ouvert.");
+  if(eligible.length === 0){
+    state.round++;
+    assign();
     return;
   }
 
-  const list = [...cand];
-
-  state.index = state.index % list.length;
-
-  let chosen = null;
-  let tries = 0;
-
-  // ✅ logique poids correcte
-  while(tries < list.length){
-    const a = list[state.index];
-    const w = a.weight || 1;
-
-    if(a.counter < w){
-      chosen = a;
-      break;
-    }
-
-    a.counter = 0;
-    state.index = (state.index + 1) % list.length;
-    tries++;
-  }
-
-  if(!chosen) return;
+  const chosen = [...eligible]
+    .sort((a,b)=>a.load-b.load)[0];
 
   running = true;
   assignBtn.disabled = true;
 
   function settle(a){
-    a.load++;
-    a.counter++;
 
-    if(a.counter >= (a.weight || 1)){
-      a.counter = 0;
-      state.index = (state.index + 1) % list.length;
-    }
+    a.load++;
 
     state.history.push(a.id);
 
     undoBtn.disabled = false;
-    setReveal("result",a.name,a.segment,a.load);
+
+    setReveal(
+      "result",
+      a.name,
+      a.segment,
+      a.load
+    );
 
     renderAll();
+
     running = false;
     assignBtn.disabled = false;
+
+    state.round++;
+
     save();
   }
 
-  // animation
-  let i=0;
+  let i = 0;
+
   (function flick(){
-    const r=list[Math.floor(Math.random()*list.length)];
+
+    const r =
+      eligible[Math.floor(Math.random()*eligible.length)];
+
     setReveal("running",r.name);
+
     i++;
-    if(i<8) setTimeout(flick,70);
-    else settle(chosen);
+
+    if(i < 8){
+      setTimeout(flick,70);
+    }else{
+      settle(chosen);
+    }
+
   })();
 }
 
@@ -981,7 +992,7 @@ document.querySelectorAll("#admNav button").forEach(b=>b.addEventListener("click
 // ---------- listeners ----------
 assignBtn.addEventListener("click",assign);
 undoBtn.addEventListener("click",undo);
-$("#addBtn").addEventListener("click",()=>{const n=$("#nameInput").value.trim();if(!n){$("#nameInput").focus();return;}if(!state.addSeg){alert("Créez d'abord un segment.");return;}state.agents.push({id:uid(),name:n,segment:state.addSeg,load:0,open:true,schedules:[]});$("#nameInput").value="";renderAll();save();});
+$("#addBtn").addEventListener("click",()=>{const n=$("#nameInput").value.trim();if(!n){$("#nameInput").focus();return;}if(!state.addSeg){alert("Créez d'abord un segment.");return;}state.agents.push({id:uid(),name:n,segment:state.addSeg,load:0,open:true,schedules:[],weight:1});$("#nameInput").value="";renderAll();save();});
 $("#nameInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("#addBtn").click();});
 $("#segAdd").addEventListener("click",()=>{const code=$("#segCode").value.trim();if(!code){$("#segCode").focus();return;}if(state.segments.some(s=>s.code.toLowerCase()===code.toLowerCase())){alert("Ce segment existe déjà.");return;}state.segments.push({id:uid(),code:code,color:$("#segColor").value||PALETTE[state.segments.length%PALETTE.length]});if(!state.addSeg)state.addSeg=code;$("#segCode").value="";renderAll();save();});
 $("#segCode").addEventListener("keydown",e=>{if(e.key==="Enter")$("#segAdd").click();});
@@ -999,11 +1010,10 @@ $("#fullResetBtn2").addEventListener("click",()=>{
     state.agents.forEach(a=>{
       a.load = 0;
       a.weight = 1;
-      a.counter = 0;   // ✅ IMPORTANT
     });
 
     state.history = [];
-    state.index = 0;
+    state.round = 1;
 
     undoBtn.disabled = true;
 
@@ -1021,11 +1031,10 @@ $("#fullResetBtn").addEventListener("click", () => {
     state.agents.forEach(a => {
       a.load = 0;
       a.weight = 1;
-      a.counter = 0; // ✅ IMPORTANT
     });
 
     state.history = [];
-    state.index = 0;
+    state.round = 1;
 
     undoBtn.disabled = true;
 
