@@ -7,15 +7,16 @@
 
 <script>
   // =====================================================================
-  // ⚙️  CONFIGURATION FIREBASE — MODIFIE UNIQUEMENT CETTE LIGNE
-  // 1. Va sur https://console.firebase.google.com
-  // 2. Crée un projet (ex: "enedis-acor")
-  // 3. Realtime Database → Créer → Mode test
-  // 4. Copie l'URL et remplace ci-dessous (sans slash final)
-  // Exemple : "https://enedis-acor-default-rtdb.europe-west1.firebasedatabase.app"
+  // ⚙️  SERVEUR LOCAL — pas besoin de Firebase ni d'internet
+  // L'URL ci-dessous pointe vers le serveur Node.js qui tourne sur le
+  // serveur de l'entreprise. Remplacez l'IP si elle change.
+  // Exemple : "http://192.168.1.50:3000"
   // =====================================================================
-  const FIREBASE_URL = "https://enedis-arena-default-rtdb.europe-west1.firebasedatabase.app";
+  const SERVER_URL = "";   // ← laissez vide = même machine (localhost auto)
   // =====================================================================
+
+  // Construit l'URL de base selon le contexte (même serveur ou IP fixe)
+  const API_BASE = window.location.origin;
 </script>
 
 <style>
@@ -44,38 +45,17 @@ color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh;padding:18p
 #syncBanner .dot-anim span:nth-child(3){animation-delay:.3s}
 @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
 
-/* --- firebase config warning --- */
-#firebaseWarn{display:none;background:#fff5f5;border:1.5px solid #ffc9c9;border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:13px;font-weight:700;color:#c0392b;line-height:1.5}
-#firebaseWarn.show{display:block}
+/* --- server warning --- */
+#serverWarn{display:none;background:#fff5f5;border:1.5px solid #ffc9c9;border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:13px;font-weight:700;color:#c0392b;line-height:1.5}
+#serverWarn.show{display:block}
 
 header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
 .brand{display:flex;align-items:center;gap:11px;min-width:0}
-
-#brandLogo{
-  height:180px;
-}
-
+#brandLogo{height:180px;}
 .wordmark{font-weight:900;font-size:25px;letter-spacing:-.5px;line-height:1;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.tagline{
-  text-align:right;
-  line-height:1.25;
-  flex:0 0 auto
-}
-
-.title-acor{
-  display:block;
-  color:#1020D8; /* bleu Enedis */
-  font-weight:900;
-  font-size:22px;
-  letter-spacing:-0.5px;
-}
-
-.subtitle-acor{
-  display:block;
-  font-size:12px;
-  color:#5B6480;
-  font-weight:700;
-}
+.tagline{text-align:right;line-height:1.25;flex:0 0 auto}
+.title-acor{display:block;color:#1020D8;font-weight:900;font-size:22px;letter-spacing:-0.5px;}
+.subtitle-acor{display:block;font-size:12px;color:#5B6480;font-weight:700;}
 
 .seg-nav{display:flex;gap:6px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:5px;margin-bottom:16px;box-shadow:var(--shadow)}
 .seg-nav button{flex:1;border:none;background:none;font:inherit;font-weight:800;font-size:14px;color:var(--muted);padding:11px;border-radius:10px;cursor:pointer;transition:.18s;display:flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}
@@ -138,7 +118,6 @@ ul.agents li.closed{opacity:.6}
 .pill.open{color:#5a7d05;border-color:#cfe79a;background:#f6fbe9}
 .pill.shut{color:#94a3b5;background:#f1f5f9} .pill.shut .d{background:#b6c2d1}
 .pill[disabled]{cursor:default;opacity:.85}
-.pill .pg{font-size:10px;font-weight:800;opacity:.85}
 .prog{width:34px;height:30px;border:1.5px solid var(--line);background:#fff;border-radius:10px;color:var(--blue);display:grid;place-items:center;cursor:pointer;transition:.15s;flex:0 0 auto}
 .prog:hover{background:#eef1ff;border-color:#c3ccf2} .prog svg{width:16px;height:16px}
 .ag-main{flex:1 1 100px;min-width:90px;display:flex;align-items:center;gap:8px}
@@ -234,7 +213,7 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 .modal h3{margin:0 0 4px;font-size:18px;font-weight:900;color:var(--ink)}
 .modal p{margin:0 0 18px;font-size:13px;font-weight:600;color:var(--muted)}
 .pin-cells{display:flex;gap:10px;justify-content:center;margin-bottom:8px}
-.pin-cells input{width:48px;height:56px;border:1.8px solid var(--line);border-radius:13px;text-align:center;font-size:24px;font-weight:900;color:var(--ink);background:#fff;transition:.15s;padding:0}
+.pin-cells input{width:48px;height:56px;border:1.8px solid var(--line);border-radius:13px;text-align:center;font-size:24px;font-weight:900;color:var(--ink);background:#fff;transition:.15px;padding:0}
 .pin-cells input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 4px rgba(16,32,216,.13)}
 .pin-err{color:#e35d5d;font-weight:800;font-size:12.5px;height:16px;margin-bottom:10px}
 .modal-actions{display:flex;gap:8px}
@@ -251,16 +230,14 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 <body>
 <div class="wrap">
 
-<!-- Bannière de synchronisation -->
 <div id="syncBanner">
   <div class="dot-anim"><span></span><span></span><span></span></div>
   Synchronisation en cours…
 </div>
 
-<!-- Avertissement Firebase non configuré -->
-<div id="firebaseWarn">
-  ⚠️ Firebase non configuré — l'app fonctionne en mode local uniquement.<br>
-  Ouvre le fichier dans un éditeur et remplace <code>TON-PROJET-ICI</code> par l'URL de ta base Firebase pour activer le multi-utilisateur.
+<div id="serverWarn">
+  ⚠️ Serveur local non joignable — vérifiez que <b>DEMARRER.bat</b> est bien lancé sur le serveur.<br>
+  L'application fonctionne en mode local temporaire (non partagé).
 </div>
 
 <header>
@@ -268,12 +245,10 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
   <img id="brandLogo" src="" alt="Enedis" style="display:none" />
   <div class="wordmark" id="wordFallback">enedis</div>
 </div>
-
 <div class="tagline">
   <span class="title-acor">Affectation ACOR</span>
   <span class="subtitle-acor">répartition des affaires</span>
 </div>
-
 </header>
 
 <div class="seg-nav" id="modeNav">
@@ -306,7 +281,6 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 </section>
 </div>
 
-  
 <!-- ===================== ADMIN ===================== -->
 <div class="panel" id="viewAdmin">
 <div class="seg-nav subnav" id="admNav">
@@ -317,7 +291,6 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 <button data-sub="reglages">Réglages</button>
 </div>
 
-<!-- Agents -->
 <div class="panel active" id="subAgents">
 <section class="card">
 <div class="list-head">
@@ -341,7 +314,6 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 </section>
 </div>
 
-<!-- Segments -->
 <div class="panel" id="subSegments">
 <section class="card">
 <div class="card-title"><span class="dot"></span>Gérer les segments</div>
@@ -358,7 +330,6 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 </section>
 </div>
 
-<!-- Planning -->
 <div class="panel" id="subPlanning">
 <section class="card">
 <div class="card-title"><span class="dot"></span>Programmer une fermeture</div>
@@ -372,7 +343,6 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 <section class="card"><div class="card-title"><span class="dot"></span>À venir</div><ul class="sched-list" id="schUpcoming"></ul></section>
 </div>
 
-<!-- Stats -->
 <div class="panel" id="subStats">
 <section class="card">
 <div class="card-title"><span class="dot"></span>Synthèse</div>
@@ -388,7 +358,6 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 <section class="card"><div class="card-title"><span class="dot"></span>Charge par agent</div><ul class="bars" id="barList"></ul></section>
 </div>
 
-<!-- Réglages -->
 <div class="panel" id="subReglages">
 <section class="card">
 <div class="card-title"><span class="dot"></span>Apparence</div>
@@ -405,19 +374,12 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 </section>
 <section class="card">
 <div class="card-title"><span class="dot"></span>Données</div>
-
 <div class="set-row"><div><div class="lab">Exporter</div><div class="sub">Copier les données (JSON)</div></div><button class="btn-mini" id="exportBtn">Exporter</button></div>
-
 <div class="set-row"><div><div class="lab">Importer</div><div class="sub">Coller un JSON — remplace tout</div></div><button class="btn-mini" id="importBtn">Importer</button></div>
-
 <div class="set-row"><div><div class="lab">Réinitialiser</div><div class="sub">Recharge les 20 agents de départ</div></div><button class="btn-mini btn-danger" id="resetBtn">Réinitialiser</button></div>
-
 <div class="set-row"><div><div class="lab">Remettre les charges à zéro</div><div class="sub">Garde tout, affaires à 0</div></div><button class="btn-mini btn-danger" id="zeroBtn">Tout à zéro</button></div>
-
 <div class="set-row"><div><div class="lab">Reset complet</div><div class="sub">Charges + rotation + poids à 1</div></div><button class="btn-mini btn-danger" id="fullResetBtn">RESET TOTAL</button></div>
-
-<div class="legend">Code par défaut : <b>0000</b>. Firebase synchronise toutes les modifications en temps réel entre tous les utilisateurs ouverts.</div>
-
+<div class="legend">Code par défaut : <b>0000</b>. Le serveur local synchronise toutes les modifications en temps réel entre tous les utilisateurs connectés.</div>
 </section>
 </div>
 </div>
@@ -448,10 +410,6 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 (function(){
 "use strict";
 
-// ── Vérification configuration Firebase ──
-const FB_CONFIGURED = FIREBASE_URL && FIREBASE_URL !== "https://enedis-arena-default-rtdb.europe-west1.firebasedatabase.app/";
-if(!FB_CONFIGURED) document.getElementById("firebaseWarn").classList.add("show");
-
 const PALETTE=["#90C808","#1020D8","#16A085","#F39C12","#8E44AD","#0EA5B5","#E0457B","#34495E","#2E86DE","#27AE60"];
 const DEFAULT_SEGMENTS=[{code:"C5",color:"#90C808"},{code:"C4",color:"#1020D8"},{code:"C2",color:"#16A085"}];
 const SEED=[
@@ -462,36 +420,14 @@ const SEED=[
 ["Patricia Henry","C4",3],["Hugo Renaud","C5",4],["Valérie Marchand","C2",2],["Olivier Fontaine","C4",5]
 ];
 
-const state={
-  segments:[],
-  agents:[],
-  scope:"all",
-  view:"all",
-  addSeg:"",
-  history:[],
-  pin:"0000",
-  logo:null,
-  unlocked:false,
-  index:0   // ✅ NOUVEAU
-};
+const state={segments:[],agents:[],scope:"all",view:"all",addSeg:"",history:[],pin:"0000",logo:null,unlocked:false,index:0};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const $=(s)=>document.querySelector(s);
 const cap=(s)=>s.charAt(0).toUpperCase()+s.slice(1);
 
 function seedData(){
   state.segments=DEFAULT_SEGMENTS.map(s=>({id:uid(),code:s.code,color:s.color}));
-  
-state.agents=SEED.map(a=>({
-  id:uid(),
-  name:a[0],
-  segment:a[1],
-  load:a[2],
-  open:true,
-  schedules:[],
-  weight:1,
-  counter:0
-
-}));
+  state.agents=SEED.map(a=>({id:uid(),name:a[0],segment:a[1],load:a[2],open:true,schedules:[],weight:1,counter:0}));
   state.history=[];state.addSeg=state.segments[0].code;
 }
 
@@ -502,101 +438,61 @@ function ensureSegments(){
 }
 
 function normalize(){
-  state.agents.forEach(a => {
-    if(!Array.isArray(a.schedules)) a.schedules = [];
-
-    // ✅ AJOUT ICI
-    if(a.weight === undefined) a.weight = 1;
-    if(a.counter === undefined) a.counter = 0;
-  
+  state.agents.forEach(a=>{
+    if(!Array.isArray(a.schedules))a.schedules=[];
+    if(a.weight===undefined)a.weight=1;
+    if(a.counter===undefined)a.counter=0;
   });
-
   ensureSegments();
-
-  const codes = new Set(state.segments.map(s => s.code));
-  if(!codes.has(state.addSeg)){
-    state.addSeg = state.segments[0] ? state.segments[0].code : "";
-  }
+  const codes=new Set(state.segments.map(s=>s.code));
+  if(!codes.has(state.addSeg))state.addSeg=state.segments[0]?state.segments[0].code:"";
 }
 
-// ── Firebase save / load ──
-let _lastRemoteHash="";
+// ── API locale (remplace Firebase) ──────────────────────────
+let _lastHash="";
 function hashData(d){return JSON.stringify({a:d.agents,s:d.segments,p:d.pin});}
 
-async function save(){
-  if(!FB_CONFIGURED){
-    // fallback localStorage si pas de Firebase
-    try{localStorage.setItem("enedis-acor:v2",JSON.stringify({segments:state.segments,agents:state.agents,pin:state.pin,logo:state.logo}));}catch(e){}
-    return;
-  }
+function save(){
   try{
-    const banner=document.getElementById("syncBanner");
-    banner.classList.add("show");
-    await fetch(FIREBASE_URL+"/acor.json",{
-      method:"PUT",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({segments:state.segments,agents:state.agents,pin:state.pin,logo:state.logo})
-    });
-    setTimeout(()=>banner.classList.remove("show"),800);
-  }catch(e){console.error("Firebase save error:",e);}
+    const data = {
+      segments: state.segments,
+      agents: state.agents,
+      pin: state.pin,
+      logo: state.logo
+    };
+    localStorage.setItem("acor_data", JSON.stringify(data));
+  }catch(e){
+    console.error("Erreur sauvegarde :", e);
+  }
 }
 
-async function load(){
-  // Essai Firebase
-  if(FB_CONFIGURED){
-    try{
-      const r=await fetch(FIREBASE_URL+"/acor.json");
-      const d=await r.json();
-      if(d&&Array.isArray(d.agents)&&d.agents.length){
-        state.agents=d.agents;
-        state.segments=Array.isArray(d.segments)?d.segments:[];
-        state.pin=d.pin||"0000";
-        state.logo=d.logo||null;
-        _lastRemoteHash=hashData(d);
+function load(){
+  try{
+    const raw = localStorage.getItem("acor_data");
+
+    if(raw){
+      const d = JSON.parse(raw);
+
+      if(d && Array.isArray(d.agents)){
+        state.agents = d.agents;
+        state.segments = d.segments || [];
+        state.pin = d.pin || "0000";
+        state.logo = d.logo || null;
+
         normalize();
         return true;
       }
-    }catch(e){console.error("Firebase load error:",e);}
-  }
-  // Fallback localStorage
-  try{
-    const raw=localStorage.getItem("enedis-acor:v2");
-    if(raw){
-      const d=JSON.parse(raw);
-      if(Array.isArray(d.agents)&&d.agents.length){
-        state.agents=d.agents;state.segments=Array.isArray(d.segments)?d.segments:[];
-        state.pin=d.pin||"0000";state.logo=d.logo||null;normalize();return true;
-      }
     }
-  }catch(e){}
+  }catch(e){
+    console.error("Erreur chargement :", e);
+  }
+
   return false;
 }
 
-// ── Synchronisation temps réel (polling toutes les 3 secondes) ──
+// Polling toutes les 3s
 let _syncActive=false;
-function startSync(){
-  if(!FB_CONFIGURED||_syncActive)return;
-  _syncActive=true;
-  setInterval(async()=>{
-    try{
-      const r=await fetch(FIREBASE_URL+"/acor.json?t="+Date.now());
-      const d=await r.json();
-      if(!d||!Array.isArray(d.agents))return;
-      const h=hashData(d);
-      if(h===_lastRemoteHash)return; // rien de changé
-      _lastRemoteHash=h;
-      // mise à jour depuis Firebase sans écraser les saisies locales en cours
-      state.agents=d.agents;
-      state.segments=Array.isArray(d.segments)?d.segments:[];
-      if(d.pin)state.pin=d.pin;
-      if(d.logo!==undefined)state.logo=d.logo;
-      normalize();
-      renderAll();
-    }catch(e){}
-  },3000);
-}
-
-// helpers couleur
+// helpers
 function segColor(code){const s=state.segments.find(x=>x.code===code);return s?s.color:"#9DAEC2";}
 function textOn(hex){const h=(hex||"#888").replace('#','');const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);const L=(0.2126*r+0.7152*g+0.0722*b)/255;return L>0.6?'#141A3D':'#ffffff';}
 function badgeHTML(code){const c=segColor(code);return '<span class="badge" style="background:'+c+';color:'+textOn(c)+'">'+code+'</span>';}
@@ -616,51 +512,22 @@ const effOpen=(a)=>effState(a).open;
 const openInScope=()=>state.agents.filter(a=>effOpen(a)&&(state.scope==="all"||a.segment===state.scope));
 const countOpen=(seg)=>state.agents.filter(a=>effOpen(a)&&(seg==="all"||a.segment===seg)).length;
 
-function purge(){
-  let ch=false;const d=new Date();
-  state.agents.forEach(a=>{if(a.schedules){const n=a.schedules.filter(s=>!s.end||new Date(s.end)>d);if(n.length!==a.schedules.length){a.schedules=n;ch=true;}}});
-  return ch;
-}
+function purge(){let ch=false;const d=new Date();state.agents.forEach(a=>{if(a.schedules){const n=a.schedules.filter(s=>!s.end||new Date(s.end)>d);if(n.length!==a.schedules.length){a.schedules=n;ch=true;}}});return ch;}
 function fmt(s){if(!s)return"—";const d=new Date(s);if(isNaN(d))return"—";return d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'})+" à "+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
 
-function applyLogo(){
-  const img=$("#brandLogo"),wm=$("#wordFallback");
-  if(state.logo){img.src=state.logo;img.style.display="block";wm.style.display="none";}
-  else{img.style.display="none";wm.style.display="block";}
-}
+function applyLogo(){const img=$("#brandLogo"),wm=$("#wordFallback");if(state.logo){img.src=state.logo;img.style.display="block";wm.style.display="none";}else{img.style.display="none";wm.style.display="block";}}
 
-// ---------- builders ----------
 function renderScopeChips(){
-  const host = $("#scopePick");
-  host.innerHTML = "";
-
-  state.segments.forEach(s => {
-    const b = document.createElement("button");
-    b.className = "chip";
-
-    const active = state.scope === s.code;
-    b.setAttribute("aria-pressed", active);
-
-    b.innerHTML = '<span>'+s.code+'</span><span class="cnt">'+countOpen(s.code)+'</span>';
-
-    if(active){
-      const col = segColor(s.code);
-      b.style.background = col;
-      b.style.color = textOn(col);
-      b.style.borderColor = "transparent";
-    }
-
-    b.addEventListener("click", () => {
-  state.scope = s.code;
-
-  renderScopeChips();
-  renderPriority();
-});
-
+  const host=$("#scopePick");host.innerHTML="";
+  state.segments.forEach(s=>{
+    const b=document.createElement("button");b.className="chip";
+    const active=state.scope===s.code;b.setAttribute("aria-pressed",active);
+    b.innerHTML='<span>'+s.code+'</span><span class="cnt">'+countOpen(s.code)+'</span>';
+    if(active){const col=segColor(s.code);b.style.background=col;b.style.color=textOn(col);b.style.borderColor="transparent";}
+    b.addEventListener("click",()=>{state.scope=s.code;renderScopeChips();renderPriority();});
     host.appendChild(b);
   });
-
-  $("#availInfo").textContent = state.agents.length + " agents";
+  $("#availInfo").textContent=state.agents.length+" agents";
 }
 
 function renderViewFilter(){
@@ -692,159 +559,42 @@ function removeSegment(s){
 }
 
 function renderPriority(){
-  prioList.innerHTML = "";
-
-  const cand = state.agents
-  .filter(a => a.segment === state.scope)
-  .sort((a, b) => a.load - b.load);
-
-  if(cand.length === 0){
-    prioList.innerHTML = '<li class="ro-empty">Aucun agent ouvert dans ce périmètre.</li>';
-    return;
-  }
-
-  cand.forEach((a, i) => {
-    const li = document.createElement("li");
-
-    // ✅ récupération statut (comme admin)
-    const isOpen = effOpen(a);
-
-    const status = isOpen
-      ? '<span style="color:#16A34A;font-weight:800">Ouvert</span>'
-      : '<span style="color:#DC2626;font-weight:800">Fermé</span>';
-
-    li.innerHTML =
-      '<span class="rank">' + (i + 1) + '</span>' +
-      '<span class="ro-name"></span>' +
-      badgeHTML(a.segment) +
-      '<span class="ro-load">' + a.load + '</span>' +
-      '<span style="margin-left:8px">' + status + '</span>';
-
-    li.querySelector(".ro-name").textContent = a.name;
-
+  prioList.innerHTML="";
+  const cand=state.agents.filter(a=>a.segment===state.scope).sort((a,b)=>a.load-b.load);
+  if(cand.length===0){prioList.innerHTML='<li class="ro-empty">Aucun agent dans ce périmètre.</li>';return;}
+  cand.forEach((a,i)=>{
+    const li=document.createElement("li");
+    const isOpen=effOpen(a);
+    const status=isOpen?'<span style="color:#16A34A;font-weight:800">Ouvert</span>':'<span style="color:#DC2626;font-weight:800">Fermé</span>';
+    li.innerHTML='<span class="rank">'+(i+1)+'</span><span class="ro-name"></span>'+badgeHTML(a.segment)+'<span class="ro-load">'+a.load+'</span><span style="margin-left:8px">'+status+'</span>';
+    li.querySelector(".ro-name").textContent=a.name;
     prioList.appendChild(li);
   });
 }
 
-
 function renderAgents(){
   agentList.innerHTML="";
-
   const clock='<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
   const calIcon='<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-
-  state.agents
-    .filter(a => state.view==="all" || a.segment===state.view)
-    .forEach(a => {
-
-      const es = effState(a);
-      const li = document.createElement("li");
-
-      if(!es.open) li.className="closed";
-
-      const dis = es.reason==="closure";
-
-      li.innerHTML =
-        '<div class="ag-ctrl">'+
-          '<button class="pill '+(es.open?"open":"shut")+'"'+(dis?' disabled':'')+'>'+
-            '<span class="d"></span>'+(es.open?"Ouvert":"Fermé")+
-          '</button>'+
-          '<button class="prog">'+calIcon+'</button>'+
-        '</div>'+
-
-        '<div class="ag-main">'+
-          '<span class="ag-name"></span>'+
-          badgeHTML(a.segment)+
-        '</div>'+
-
-        // ✅ AFFAIRES
-        '<div class="stepper">'+
-          '<button class="minus">−</button>'+
-          '<span class="val">A '+a.load+'</span>'+
-          '<button class="plus">+</button>'+
-        '</div>'+
-        
-        // ✅ POIDS
-        '<div class="stepper">'+
-          '<button class="wminus">−</button>'+
-          '<span class="val">⚖️ '+(a.weight || 1)+'</span>'+
-          '<button class="wplus">+</button>'+
-        '</div>'+
-
-
-        '<button class="del">×</button>';
-
-      li.querySelector(".ag-name").textContent = a.name;
-
-      if(es.reason==="closure"){
-        const sub=document.createElement("div");
-        sub.className="ag-sched now";
-        sub.innerHTML = clock + '<span>Indisponible</span>';
-        li.appendChild(sub);
-      }
-
-      // ✅ ACTIONS
-      const pill = li.querySelector(".pill");
-
-      if(!dis){
-        pill.addEventListener("click",()=>{
-          a.open=!a.open;
-          renderAll();
-          save();
-        });
-      }
-
-      li.querySelector(".prog").addEventListener("click",()=>goPlanning(a.id));
-
-      // ✅ charge -
-      li.querySelector(".minus").addEventListener("click",()=>{
-        if(a.load>0){
-          a.load--;
-          renderAll();
-          save();
-        }
-      });
-
-      // ✅ charge +
-      li.querySelector(".plus").addEventListener("click",()=>{
-        a.load++;
-        renderAll();
-        save();
-      });
-
-      // ✅ poids -
-      li.querySelector(".wminus").addEventListener("click",()=>{
-        if((a.weight || 1) > 1){
-          a.weight--;
-          renderAll();
-          save();
-        }
-      });
-
-      // ✅ poids +
-      li.querySelector(".wplus").addEventListener("click",()=>{
-        if((a.weight || 1) < 4){
-          a.weight++;
-          renderAll();
-          save();
-        }
-      });
-
-      // ✅ delete
-      li.querySelector(".del").addEventListener("click",()=>{
-        if(confirm("Retirer "+a.name+" ?")){
-          state.agents = state.agents.filter(x => x.id !== a.id);
-          renderAll();
-          save();
-        }
-      });
-
-      agentList.appendChild(li);
-    });
-
-  $("#activeCount").textContent = countOpen("all")+" ouverts / "+state.agents.length;
+  state.agents.filter(a=>state.view==="all"||a.segment===state.view).forEach(a=>{
+    const es=effState(a);const li=document.createElement("li");
+    if(!es.open)li.className="closed";
+    const dis=es.reason==="closure";
+    li.innerHTML='<div class="ag-ctrl"><button class="pill '+(es.open?"open":"shut")+'"'+(dis?' disabled':'')+'><span class="d"></span>'+(es.open?"Ouvert":"Fermé")+'</button><button class="prog">'+calIcon+'</button></div><div class="ag-main"><span class="ag-name"></span>'+badgeHTML(a.segment)+'</div><div class="stepper"><button class="minus">−</button><span class="val">A '+a.load+'</span><button class="plus">+</button></div><div class="stepper"><button class="wminus">−</button><span class="val">⚖️ '+(a.weight||1)+'</span><button class="wplus">+</button></div><button class="del">×</button>';
+    li.querySelector(".ag-name").textContent=a.name;
+    if(es.reason==="closure"){const sub=document.createElement("div");sub.className="ag-sched now";sub.innerHTML=clock+'<span>Indisponible</span>';li.appendChild(sub);}
+    const pill=li.querySelector(".pill");
+    if(!dis){pill.addEventListener("click",()=>{a.open=!a.open;renderAll();save();});}
+    li.querySelector(".prog").addEventListener("click",()=>goPlanning(a.id));
+    li.querySelector(".minus").addEventListener("click",()=>{if(a.load>0){a.load--;renderAll();save();}});
+    li.querySelector(".plus").addEventListener("click",()=>{a.load++;renderAll();save();});
+    li.querySelector(".wminus").addEventListener("click",()=>{if((a.weight||1)>1){a.weight--;renderAll();save();}});
+    li.querySelector(".wplus").addEventListener("click",()=>{if((a.weight||1)<4){a.weight++;renderAll();save();}});
+    li.querySelector(".del").addEventListener("click",()=>{if(confirm("Retirer "+a.name+" ?")){state.agents=state.agents.filter(x=>x.id!==a.id);renderAll();save();}});
+    agentList.appendChild(li);
+  });
+  $("#activeCount").textContent=countOpen("all")+" ouverts / "+state.agents.length;
 }
-
 
 function renderSchedules(){
   const sel=$("#schAgent"),cur=sel.value;sel.innerHTML="";
@@ -867,76 +617,23 @@ function setReveal(cls,name,tagSeg,charge){
 
 let running=false;
 function assign(){
-  if(running) return;
-
-  const cand = openInScope();
-
-  if(state.agents.length===0){
-    setReveal("idle","Aucun agent.");
-    return;
-  }
-
-  if(cand.length===0){
-    setReveal("idle","Aucun agent ouvert.");
-    return;
-  }
-
-  const list = [...cand];
-
-  state.index = state.index % list.length;
-
-  let chosen = null;
-  let tries = 0;
-
-  // ✅ logique poids correcte
-  while(tries < list.length){
-    const a = list[state.index];
-    const w = a.weight || 1;
-
-    if(a.counter < w){
-      chosen = a;
-      break;
-    }
-
-    a.counter = 0;
-    state.index = (state.index + 1) % list.length;
-    tries++;
-  }
-
-  if(!chosen) return;
-
-  running = true;
-  assignBtn.disabled = true;
-
+  if(running)return;
+  const cand=openInScope();
+  if(state.agents.length===0){setReveal("idle","Aucun agent.");return;}
+  if(cand.length===0){setReveal("idle","Aucun agent ouvert.");return;}
+  const list=[...cand];state.index=state.index%list.length;
+  let chosen=null,tries=0;
+  while(tries<list.length){const a=list[state.index];const w=a.weight||1;if(a.counter<w){chosen=a;break;}a.counter=0;state.index=(state.index+1)%list.length;tries++;}
+  if(!chosen)return;
+  running=true;assignBtn.disabled=true;
   function settle(a){
-    a.load++;
-    a.counter++;
-
-    if(a.counter >= (a.weight || 1)){
-      a.counter = 0;
-      state.index = (state.index + 1) % list.length;
-    }
-
-    state.history.push(a.id);
-
-    undoBtn.disabled = false;
-    setReveal("result",a.name,a.segment,a.load);
-
-    renderAll();
-    running = false;
-    assignBtn.disabled = false;
-    save();
+    a.load++;a.counter++;
+    if(a.counter>=(a.weight||1)){a.counter=0;state.index=(state.index+1)%list.length;}
+    state.history.push(a.id);undoBtn.disabled=false;
+    setReveal("result",a.name,a.segment,a.load);renderAll();running=false;assignBtn.disabled=false;save();
   }
-
-  // animation
   let i=0;
-  (function flick(){
-    const r=list[Math.floor(Math.random()*list.length)];
-    setReveal("running",r.name);
-    i++;
-    if(i<8) setTimeout(flick,70);
-    else settle(chosen);
-  })();
+  (function flick(){const r=list[Math.floor(Math.random()*list.length)];setReveal("running",r.name);i++;if(i<8)setTimeout(flick,70);else settle(chosen);})();
 }
 
 function undo(){
@@ -961,7 +658,6 @@ function renderReport(){
 
 function renderAll(){normalize();if(purge())save();renderScopeChips();renderViewFilter();renderAddSegChips();renderSegManager();renderPriority();renderAgents();renderReport();renderSchedules();applyLogo();}
 
-// ---------- modes / nav ----------
 function showMode(m){$("#mUser").classList.toggle("active",m==="user");$("#mAdmin").classList.toggle("active",m==="admin");$("#viewUser").classList.toggle("active",m==="user");$("#viewAdmin").classList.toggle("active",m==="admin");}
 function activateSub(name){document.querySelectorAll("#admNav button").forEach(x=>x.classList.toggle("active",x.dataset.sub===name));["agents","segments","planning","stats","reglages"].forEach(k=>{const el=document.getElementById("sub"+cap(k));if(el)el.classList.toggle("active",k===name);});if(name==="stats")renderReport();if(name==="planning")renderSchedules();}
 function goPlanning(agentId){showMode("admin");activateSub("planning");renderSchedules();$("#schAgent").value=agentId;window.scrollTo({top:0,behavior:"smooth"});setTimeout(()=>$("#schStartD").focus(),120);}
@@ -978,64 +674,20 @@ $("#mUser").addEventListener("click",()=>showMode("user"));
 $("#mAdmin").addEventListener("click",()=>{state.unlocked?showMode("admin"):openPin();});
 document.querySelectorAll("#admNav button").forEach(b=>b.addEventListener("click",()=>activateSub(b.dataset.sub)));
 
-// ---------- listeners ----------
 assignBtn.addEventListener("click",assign);
 undoBtn.addEventListener("click",undo);
-$("#addBtn").addEventListener("click",()=>{const n=$("#nameInput").value.trim();if(!n){$("#nameInput").focus();return;}if(!state.addSeg){alert("Créez d'abord un segment.");return;}state.agents.push({id:uid(),name:n,segment:state.addSeg,load:0,open:true,schedules:[]});$("#nameInput").value="";renderAll();save();});
+$("#addBtn").addEventListener("click",()=>{const n=$("#nameInput").value.trim();if(!n){$("#nameInput").focus();return;}if(!state.addSeg){alert("Créez d'abord un segment.");return;}state.agents.push({id:uid(),name:n,segment:state.addSeg,load:0,open:true,schedules:[],weight:1,counter:0});$("#nameInput").value="";renderAll();save();});
 $("#nameInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("#addBtn").click();});
 $("#segAdd").addEventListener("click",()=>{const code=$("#segCode").value.trim();if(!code){$("#segCode").focus();return;}if(state.segments.some(s=>s.code.toLowerCase()===code.toLowerCase())){alert("Ce segment existe déjà.");return;}state.segments.push({id:uid(),code:code,color:$("#segColor").value||PALETTE[state.segments.length%PALETTE.length]});if(!state.addSeg)state.addSeg=code;$("#segCode").value="";renderAll();save();});
 $("#segCode").addEventListener("keydown",e=>{if(e.key==="Enter")$("#segAdd").click();});
-
 function combine(dEl,tEl,defT){const d=dEl.value;if(!d)return null;const t=tEl.value||defT;return d+"T"+t;}
 $("#schAdd").addEventListener("click",()=>{const id=$("#schAgent").value,start=combine($("#schStartD"),$("#schStartT"),"08:00"),end=combine($("#schEndD"),$("#schEndT"),"18:00");if(!id){alert("Choisissez un agent.");return;}if(!start){alert("Indiquez une date de début.");return;}if(end&&new Date(end)<=new Date(start)){alert("La réouverture doit être après le début.");return;}const a=state.agents.find(x=>x.id===id);if(!a)return;a.schedules.push({id:uid(),start,end});$("#schStartD").value="";$("#schEndD").value="";renderAll();save();});
-
 $("#savePin").addEventListener("click",()=>{const p=$("#newPin").value;if(!/^\d{4}$/.test(p)){alert("Le code doit comporter 4 chiffres.");return;}state.pin=p;$("#newPin").value="";save();alert("Code mis à jour.");});
 $("#lockBtn").addEventListener("click",()=>{state.unlocked=false;showMode("user");});
 $("#resetBtn").addEventListener("click",()=>{if(confirm("Réinitialiser segments et agents de départ ?")){seedData();renderAll();save();undoBtn.disabled=true;}});
 $("#zeroBtn").addEventListener("click",()=>{if(confirm("Remettre toutes les charges à zéro ?")){state.agents.forEach(a=>a.load=0);state.history=[];renderAll();save();undoBtn.disabled=true;}});
-$("#fullResetBtn2").addEventListener("click",()=>{
-  if(confirm("Reset complet ?")){
-
-    state.agents.forEach(a=>{
-      a.load = 0;
-      a.weight = 1;
-      a.counter = 0;   // ✅ IMPORTANT
-    });
-
-    state.history = [];
-    state.index = 0;
-
-    undoBtn.disabled = true;
-
-    setReveal("idle","Reset effectué");
-    revealLabel.textContent = "Prêt";
-
-    renderAll();
-    save();
-  }
-});
-
-$("#fullResetBtn").addEventListener("click", () => {
-  if(confirm("Réinitialiser complètement ? (charges + rotation + poids)")){
-
-    state.agents.forEach(a => {
-      a.load = 0;
-      a.weight = 1;
-      a.counter = 0; // ✅ IMPORTANT
-    });
-
-    state.history = [];
-    state.index = 0;
-
-    undoBtn.disabled = true;
-
-    setReveal("idle","Système réinitialisé");
-    revealLabel.textContent = "Prêt";
-
-    renderAll();
-    save();
-  }
-});
+$("#fullResetBtn2").addEventListener("click",()=>{if(confirm("Reset complet ?")){state.agents.forEach(a=>{a.load=0;a.weight=1;a.counter=0;});state.history=[];state.index=0;undoBtn.disabled=true;setReveal("idle","Reset effectué");revealLabel.textContent="Prêt";renderAll();save();}});
+$("#fullResetBtn").addEventListener("click",()=>{if(confirm("Réinitialiser complètement ?")){state.agents.forEach(a=>{a.load=0;a.weight=1;a.counter=0;});state.history=[];state.index=0;undoBtn.disabled=true;setReveal("idle","Système réinitialisé");revealLabel.textContent="Prêt";renderAll();save();}});
 $("#logoPick").addEventListener("click",()=>$("#logoFile").click());
 $("#logoFile").addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{state.logo=rd.result;applyLogo();save();};rd.readAsDataURL(f);e.target.value="";});
 $("#logoReset").addEventListener("click",()=>{state.logo=null;applyLogo();save();});
@@ -1047,14 +699,10 @@ $("#importBtn").addEventListener("click",()=>openData("import"));
 $("#dataClose").addEventListener("click",()=>$("#dataOverlay").classList.remove("show"));
 $("#dataPrimary").addEventListener("click",()=>{const ta=$("#dataArea");if(dataMode==="export"){ta.select();try{navigator.clipboard.writeText(ta.value);}catch(e){}try{document.execCommand("copy");}catch(e){}$("#dataPrimary").textContent="Copié ✓";setTimeout(()=>$("#dataPrimary").textContent="Copier",1200);}else{let d;try{d=JSON.parse(ta.value);}catch(e){alert("JSON invalide.");return;}if(!d||!Array.isArray(d.agents)){alert("Format attendu : { \"agents\": [...] }");return;}if(!confirm("Remplacer toutes les données actuelles ?"))return;state.agents=d.agents;state.segments=Array.isArray(d.segments)?d.segments:[];if(d.pin)state.pin=d.pin;normalize();state.history=[];undoBtn.disabled=true;$("#dataOverlay").classList.remove("show");renderAll();save();}});
 
-// ---------- init ----------
 (async function(){
-  const had=await load();
+  const had= load();
   if(!had)seedData();
-  normalize();
-  applyLogo();
-  renderAll();
-  startSync(); // démarre la synchro temps réel
+  normalize();applyLogo();renderAll();
 })();
 
 })();
