@@ -472,7 +472,10 @@ const state={
   pin:"0000",
   logo:null,
   unlocked:false,
-  round:1
+  round:1,
+  turnQueue:[]
+
+  
 };
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const $=(s)=>document.querySelector(s);
@@ -490,14 +493,39 @@ state.agents=SEED.map(a=>({
   schedules:[],
   weight:1
 }));
-  state.history=[];state.addSeg=state.segments[0].code;
+
+state.history = [];
+state.round = 1;
+state.turnQueue = [];
+
+state.addSeg = state.segments[0].code;
 }
+
 
 function ensureSegments(){
   if(!Array.isArray(state.segments)||!state.segments.length)state.segments=DEFAULT_SEGMENTS.map(s=>({id:uid(),code:s.code,color:s.color}));
   const have=new Set(state.segments.map(s=>s.code));let pi=state.segments.length;
   state.agents.forEach(a=>{if(a.segment&&!have.has(a.segment)){state.segments.push({id:uid(),code:a.segment,color:PALETTE[pi++%PALETTE.length]});have.add(a.segment);}});
 }
+
+
+function buildTurnQueue(){
+
+  const eligible = openInScope().filter(a => {
+
+    const w = a.weight || 1;
+
+    return ((state.round - 1) % w) === 0;
+
+  });
+
+  state.turnQueue = eligible.map(a => a.id);
+
+  state.round++;
+}
+
+
+
 
 function normalize(){
 
@@ -516,7 +544,11 @@ function normalize(){
 
   // compteur global des tours
   if(state.round === undefined){
-    state.round = 1;
+  state.round = 1;
+  }
+  
+  if(!Array.isArray(state.turnQueue)){
+    state.turnQueue = [];
   }
 
   ensureSegments();
@@ -539,7 +571,7 @@ function hashData(d){return JSON.stringify({a:d.agents,s:d.segments,p:d.pin});}
 async function save(){
   if(!FB_CONFIGURED){
     // fallback localStorage si pas de Firebase
-    try{localStorage.setItem("enedis-acor:v2",JSON.stringify({segments:state.segments,agents:state.agents,pin:state.pin,logo:state.logo}));}catch(e){}
+    try{localStorage.setItem("enedis-acor:v2",JSON.stringify({segments:state.segments,agents:state.agents,pin:state.pin,logo:state.logo,round:state.round,turnQueue:state.turnQueue}));}catch(e){}
     return;
   }
   try{
@@ -548,7 +580,7 @@ async function save(){
     await fetch(FIREBASE_URL+"/acor.json",{
       method:"PUT",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({segments:state.segments,agents:state.agents,pin:state.pin,logo:state.logo})
+      body:JSON.stringify({segments:state.segments,agents:state.agents,pin:state.pin,logo:state.logo,round:state.round,turnQueue:state.turnQueue})
     });
     setTimeout(()=>banner.classList.remove("show"),800);
   }catch(e){console.error("Firebase save error:",e);}
@@ -565,6 +597,8 @@ async function load(){
         state.segments=Array.isArray(d.segments)?d.segments:[];
         state.pin=d.pin||"0000";
         state.logo=d.logo||null;
+        state.round = d.round || 1;
+        state.turnQueue = d.turnQueue || [];
         _lastRemoteHash=hashData(d);
         normalize();
         return true;
@@ -578,7 +612,7 @@ async function load(){
       const d=JSON.parse(raw);
       if(Array.isArray(d.agents)&&d.agents.length){
         state.agents=d.agents;state.segments=Array.isArray(d.segments)?d.segments:[];
-        state.pin=d.pin||"0000";state.logo=d.logo||null;normalize();return true;
+        state.pin=d.pin||"0000";state.logo=d.logo||null;state.round = d.round || 1;state.turnQueue = d.turnQueue || [];normalize();return true;
       }
     }
   }catch(e){}
@@ -883,24 +917,28 @@ function assign(){
 
   if(running) return;
 
-  const eligible = openInScope().filter(a => {
-    const w = a.weight || 1;
-    return ((state.round - 1) % w) === 0;
-  });
-
   if(state.agents.length === 0){
     setReveal("idle","Aucun agent.");
     return;
   }
 
-  if(eligible.length === 0){
-    state.round++;
-    assign();
+  if(!state.turnQueue.length){
+    buildTurnQueue();
+  }
+
+  if(!state.turnQueue.length){
+    setReveal("idle","Aucun agent ouvert.");
     return;
   }
 
-  const chosen = [...eligible]
-    .sort((a,b)=>a.load-b.load)[0];
+  const agentId = state.turnQueue.shift();
+
+  const chosen =
+    state.agents.find(a => a.id === agentId);
+
+  if(!chosen){
+    return;
+  }
 
   running = true;
   assignBtn.disabled = true;
@@ -925,8 +963,6 @@ function assign(){
     running = false;
     assignBtn.disabled = false;
 
-    state.round++;
-
     save();
   }
 
@@ -934,10 +970,7 @@ function assign(){
 
   (function flick(){
 
-    const r =
-      eligible[Math.floor(Math.random()*eligible.length)];
-
-    setReveal("running",r.name);
+    setReveal("running",chosen.name);
 
     i++;
 
@@ -1014,6 +1047,7 @@ $("#fullResetBtn2").addEventListener("click",()=>{
 
     state.history = [];
     state.round = 1;
+    state.turnQueue = [];
 
     undoBtn.disabled = true;
 
@@ -1035,6 +1069,7 @@ $("#fullResetBtn").addEventListener("click", () => {
 
     state.history = [];
     state.round = 1;
+    state.turnQueue = [];
 
     undoBtn.disabled = true;
 
