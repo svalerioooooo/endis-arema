@@ -292,13 +292,13 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 <div class="seg-pick" id="scopePick"></div>
 <div class="reveal idle" id="reveal" aria-live="polite">
 <span class="label" id="revealLabel">Prêt</span>
-<span class="name" id="revealName">L'affaire ira automatiquement à l'agent ouvert le moins chargé.</span>
+<span class="name" id="revealName">L'affaire sera affectée automatiquement selon la rotation configurée des agents ouverts.</span>
 <span class="tag" id="revealTag"></span>
 </div>
 <button class="draw-btn" id="assignBtn">
 <svg viewBox="0 0 24 24"><path d="M13 2 4 13.5h6L11 22l9-11.5h-6L13 2Z" fill="#fff"/></svg>Affecter une affaire
 </button>
-<div class="under"><span id="availInfo">— agents ouverts</span><button class="link-btn" id="undoBtn" disabled>Annuler la dernière</button></div>
+<div class="under"><span id="availInfo">— agents ouverts</span><button class="link-btn" id="undoBtn" disabled></button></div>
 </section>
 <section class="card">
 <div class="card-title"><span class="dot"></span>À servir en priorité</div>
@@ -329,7 +329,7 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 <div style="margin-top:10px;display:flex;gap:8px">
   <button class="btn-mini btn-danger" id="fullResetBtn2">RESET TOTAL</button>
 </div>
-<div class="legend">Bouton <b>1</b> : ouvrir / fermer · Bouton <b>2</b> (📅) : programmer une fermeture. <b>−/+</b> : ajuster la charge · <b>×</b> : retirer.</div>
+<div class="legend">Bouton <b>1</b> : ouvrir / fermer · Bouton <b>2</b> (📅) : programmer une fermeture. <b>−/+ Affaires</b> : ajuster la charge · <b>−/+ Tours</b> : ajuster la fréquence d'affectation · <b>×</b> : retirer.</div>
 </section>
 <section class="card">
 <div class="card-title"><span class="dot"></span>Ajouter un agent</div>
@@ -414,7 +414,7 @@ input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-ca
 
 <div class="set-row"><div><div class="lab">Remettre les charges à zéro</div><div class="sub">Garde tout, affaires à 0</div></div><button class="btn-mini btn-danger" id="zeroBtn">Tout à zéro</button></div>
 
-<div class="set-row"><div><div class="lab">Reset complet</div><div class="sub">Charges + rotation + poids à 1</div></div><button class="btn-mini btn-danger" id="fullResetBtn">RESET TOTAL</button></div>
+<div class="set-row"><div><div class="lab">Reset complet</div><div class="sub">Charges + rotation + tours à 1</div></div><button class="btn-mini btn-danger" id="fullResetBtn">RESET TOTAL</button></div>
 
 <div class="legend">Code par défaut : <b>0000</b>. Firebase synchronise toutes les modifications en temps réel entre tous les utilisateurs ouverts.</div>
 
@@ -812,7 +812,7 @@ function renderAgents(){
         // ✅ POIDS
         '<div class="stepper">'+
           '<button class="wminus">−</button>'+
-          '<span class="val">⚖️ '+(a.weight || 1)+'</span>'+
+          '<span class="val">🔁 '+(a.weight || 1)+'</span>'+
           '<button class="wplus">+</button>'+
         '</div>'+
 
